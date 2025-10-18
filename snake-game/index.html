@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shrinking Snake Game</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: repeating-linear-gradient(
+        45deg,
+        #4caf50,
+        #4caf50 10px,
+        #66bb6a 10px,
+        #66bb6a 20px
+      );
+      font-family: 'Courier New', monospace;
+      color: #fff;
+      user-select: none;
+    }
+    canvas {
+      border: 3px solid #2e7d32;
+      background-color: rgba(0, 0, 0, 0.2);
+      box-shadow: 0 0 20px #2e7d32;
+    }
+    h1 {
+      margin-bottom: 5px;
+    }
+    .scoreboard {
+      display: flex;
+      justify-content: space-between;
+      width: 400px;
+      margin-bottom: 10px;
+    }
+    #level-select {
+      margin-bottom: 15px;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      background-color: #2e7d32;
+      color: #fff;
+      cursor: pointer;
+    }
+    #level-select:hover {
+      background-color: #388e3c;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐍 Shrinking Snake Game</h1>
+  <div class="scoreboard">
+    <div>Score: <span id="score">0</span></div>
+    <div>High Score: <span id="high-score">0</span></div>
+  </div>
+
+  <select id="level-select">
+    <option value="easy">🟢 Easy</option>
+    <option value="medium" selected>🟠 Medium</option>
+    <option value="hard">🔴 Hard</option>
+  </select>
+
+  <canvas id="game" width="400" height="400"></canvas>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const highScoreEl = document.getElementById('high-score');
+    const levelSelect = document.getElementById('level-select');
+
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+
+    let snake = [];
+    let snakeLength = 15;
+    let snakeX = 10;
+    let snakeY = 10;
+    let velocityX = 1;
+    let velocityY = 0;
+
+    let appleX = 15;
+    let appleY = 15;
+
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('shrinkingSnakeHighScore')) || 0;
+    highScoreEl.textContent = highScore;
+
+    let speed = 150; // Default: Medium speed
+    let gameRunning = false;
+
+    levelSelect.addEventListener('change', setLevel);
+
+    function setLevel() {
+      const level = levelSelect.value;
+      if (level === 'easy') speed = 200;
+      else if (level === 'medium') speed = 150;
+      else if (level === 'hard') speed = 90;
+    }
+
+    function startGame() {
+      if (gameRunning) return;
+      gameRunning = true;
+      gameLoop();
+    }
+
+    function gameLoop() {
+      setTimeout(() => {
+        snakeX += velocityX;
+        snakeY += velocityY;
+
+        // Wrap around screen
+        if (snakeX < 0) snakeX = tileCount - 1;
+        if (snakeX >= tileCount) snakeX = 0;
+        if (snakeY < 0) snakeY = tileCount - 1;
+        if (snakeY >= tileCount) snakeY = 0;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw apple
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(appleX * gridSize + gridSize / 2, appleY * gridSize + gridSize / 2, gridSize / 2 - 2, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Move snake
+        snake.unshift({ x: snakeX, y: snakeY });
+
+        if (snakeX === appleX && snakeY === appleY) {
+          score++;
+          snakeLength = Math.max(3, snakeLength - 1);
+          appleX = Math.floor(Math.random() * tileCount);
+          appleY = Math.floor(Math.random() * tileCount);
+        }
+
+        if (snake.length > snakeLength) {
+          snake.pop();
+        }
+
+        // Draw snake
+        for (let i = 0; i < snake.length; i++) {
+          ctx.fillStyle = i === 0 ? '#2e7d32' : '#388e3c';
+          ctx.fillRect(snake[i].x * gridSize, snake[i].y * gridSize, gridSize - 2, gridSize - 2);
+
+          // Collision with self
+          if (i > 0 && snake[i].x === snakeX && snake[i].y === snakeY) {
+            resetGame();
+            return;
+          }
+        }
+
+        scoreEl.textContent = score;
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('shrinkingSnakeHighScore', highScore);
+          highScoreEl.textContent = highScore;
+        }
+
+        if (gameRunning) gameLoop();
+      }, speed);
+    }
+
+    function resetGame() {
+      alert('💀 Game Over! Your score: ' + score);
+      snake = [];
+      snakeLength = 15;
+      snakeX = 10;
+      snakeY = 10;
+      velocityX = 1;
+      velocityY = 0;
+      score = 0;
+      gameRunning = false;
+    }
+
+    // Controls
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          if (velocityY === 0) { velocityX = 0; velocityY = -1; startGame(); }
+          break;
+        case 'ArrowDown':
+          if (velocityY === 0) { velocityX = 0; velocityY = 1; startGame(); }
+          break;
+        case 'ArrowLeft':
+          if (velocityX === 0) { velocityX = -1; velocityY = 0; startGame(); }
+          break;
+        case 'ArrowRight':
+          if (velocityX === 0) { velocityX = 1; velocityY = 0; startGame(); }
+          break;
+      }
+    });
+
+    // Initialize level
+    setLevel();
+  </script>
+</body>
+</html>
